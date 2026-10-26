@@ -2,7 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
-
+from sqlalchemy import text
 from app.config import Config
 
 # Version de la API
@@ -29,6 +29,16 @@ def create_app():
     @app.route("/health", methods=["GET"])
     def health():
         return {"status": "ok", "service": "alojamientos-api", "version": API_VERSION}, 200
+    @app.route("/ready", methods=["GET"])
+    def readiness():
+        """Comprueba si la conexion a la BD acepta una consulta minima."""
+        try:
+            db.session.execute(text("SELECT 1"))
+            return {"status": "ready", "database": "available"}, 200
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Fallo de disponibilidad de la BD")
+            return {"status": "not_ready", "database": "unavailable"}, 503
 
     # Registrar blueprint de usuarios
     from app.dominios.usuarios import controladores as usuarios_ctrl
